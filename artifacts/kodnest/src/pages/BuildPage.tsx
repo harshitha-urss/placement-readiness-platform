@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   RadarChart,
   Radar,
@@ -218,6 +218,8 @@ export function BuildPage() {
             <Step2Workspace />
           ) : currentStep === 3 ? (
             <Step3Workspace />
+          ) : currentStep === 4 ? (
+            <Step4Workspace />
           ) : (
             <WorkspaceCards stepNumber={currentStep} />
           )}
@@ -1236,8 +1238,21 @@ function genQuestions(skills: Record<string, string[]>): string[] {
   return pool.slice(0, 10);
 }
 
-/* ── localStorage key ── */
-const LS_KEY = "kodnest_step3_analysis";
+/* ── Shared localStorage key (history array) ── */
+const LS_KEY = "kodnest_history";
+
+/* ── Storage helpers ── */
+function loadHistory(): AnalysisResult[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+function saveHistory(entries: AnalysisResult[]): void {
+  localStorage.setItem(LS_KEY, JSON.stringify(entries));
+}
 
 /* ── Types ── */
 interface AnalysisResult {
@@ -1259,12 +1274,8 @@ function Step3Workspace() {
   const [role, setRole] = useState("");
   const [jd, setJd] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(() => {
-    try {
-      const saved = localStorage.getItem(LS_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
+    const hist = loadHistory();
+    return hist.length > 0 ? hist[hist.length - 1] : null;
   });
 
   const handleAnalyze = () => {
@@ -1281,12 +1292,12 @@ function Step3Workspace() {
       questions:       genQuestions(skills),
       readinessScore:  score,
     };
-    localStorage.setItem(LS_KEY, JSON.stringify(data));
+    const hist = loadHistory();
+    saveHistory([...hist, data]);
     setResult(data);
   };
 
   const handleReset = () => {
-    localStorage.removeItem(LS_KEY);
     setResult(null);
     setCompany(""); setRole(""); setJd("");
   };
@@ -1652,7 +1663,298 @@ function inputStyle(): React.CSSProperties {
 }
 
 /* ══════════════════════════════════════════════════════
-   GENERIC WORKSPACE CARDS (steps 4–7)
+   STEP 4 WORKSPACE — History + Results
+══════════════════════════════════════════════════════ */
+
+function Step4Workspace() {
+  const [history, setHistory] = useState<AnalysisResult[]>(() =>
+    [...loadHistory()].reverse()          // newest first
+  );
+  const [selected, setSelected] = useState<AnalysisResult | null>(
+    () => {
+      const hist = loadHistory();
+      return hist.length > 0 ? hist[hist.length - 1] : null;
+    }
+  );
+
+  /* Sync with localStorage whenever we navigate here */
+  const refresh = () => {
+    const hist = [...loadHistory()].reverse();
+    setHistory(hist);
+    if (!selected && hist.length > 0) setSelected(hist[0]);
+  };
+
+  /* Run once on mount to pick up any new analyses from Step 3 */
+  useEffect(() => { refresh(); }, []);
+
+  if (history.length === 0) {
+    return (
+      <div
+        style={{
+          border: `1px dashed ${C.border}`,
+          borderRadius: 8,
+          padding: 64,
+          textAlign: "center",
+          backgroundColor: C.bg,
+        }}
+      >
+        <p
+          style={{
+            fontFamily: "Georgia, serif",
+            fontSize: 20,
+            fontWeight: 700,
+            color: C.text,
+            margin: "0 0 8px",
+          }}
+        >
+          No analysis yet
+        </p>
+        <p style={{ fontSize: 14, color: C.muted, margin: 0 }}>
+          Paste a JD in Step 3 to begin. Your results will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+      {/* ── Left: History list ── */}
+      <div
+        style={{
+          flex: "0 0 260px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: C.muted,
+            margin: "0 0 8px",
+          }}
+        >
+          History ({history.length})
+        </p>
+
+        {history.map((entry) => {
+          const isActive = selected?.id === entry.id;
+          return (
+            <button
+              key={entry.id}
+              onClick={() => setSelected(entry)}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "12px 16px",
+                border: `1px solid ${isActive ? C.accent : C.border}`,
+                borderRadius: 8,
+                backgroundColor: isActive ? `${C.accent}08` : C.card,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "all 150ms ease-in-out",
+              }}
+            >
+              {/* Score badge */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: C.muted,
+                    lineHeight: 1,
+                  }}
+                >
+                  {new Date(entry.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric", month: "short", year: "numeric",
+                  })}
+                </span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: isActive ? C.accent : C.muted,
+                    background: isActive ? `${C.accent}12` : C.mutedBg,
+                    border: `1px solid ${isActive ? C.accent + "33" : C.border}`,
+                    borderRadius: 12,
+                    padding: "2px 8px",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {entry.readinessScore}
+                </span>
+              </div>
+
+              <p style={{ fontSize: 13, fontWeight: 600, color: isActive ? C.accent : C.text, margin: "0 0 2px" }}>
+                {entry.company || "Unnamed Company"}
+              </p>
+              <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+                {entry.role || "Role not specified"}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Right: Result detail ── */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {selected ? (
+          <HistoryDetail entry={selected} />
+        ) : (
+          <div
+            style={{
+              border: `1px dashed ${C.border}`,
+              borderRadius: 8,
+              padding: 40,
+              textAlign: "center",
+              backgroundColor: C.bg,
+            }}
+          >
+            <p style={{ fontSize: 14, color: C.muted, margin: 0 }}>
+              Select an entry from the list to view details.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Full result detail panel ── */
+function HistoryDetail({ entry }: { entry: AnalysisResult }) {
+  const noSkills = Object.keys(entry.extractedSkills).length === 0;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Header */}
+      <div
+        style={{
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          backgroundColor: C.card,
+          padding: 24,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <p style={{ fontSize: 16, fontWeight: 600, color: C.text, margin: "0 0 4px" }}>
+            {entry.company || "Unnamed Company"}
+            {entry.role ? ` — ${entry.role}` : ""}
+          </p>
+          <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+            {new Date(entry.createdAt).toLocaleString("en-IN", {
+              day: "numeric", month: "long", year: "numeric",
+              hour: "2-digit", minute: "2-digit",
+            })}
+          </p>
+        </div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 32, fontWeight: 700, color: C.accent, fontFamily: "Georgia, serif", lineHeight: 1 }}>
+            {entry.readinessScore}
+          </div>
+          <div style={{ fontSize: 10, color: C.muted, marginTop: 2, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            Readiness
+          </div>
+        </div>
+      </div>
+
+      {/* Readiness bar */}
+      <div
+        style={{
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          backgroundColor: C.card,
+          padding: "14px 24px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Readiness Score
+          </span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.accent }}>{entry.readinessScore} / 100</span>
+        </div>
+        <div style={{ height: 6, backgroundColor: C.mutedBg, borderRadius: 3, overflow: "hidden" }}>
+          <div style={{ width: `${entry.readinessScore}%`, height: "100%", backgroundColor: C.accent, borderRadius: 3 }} />
+        </div>
+      </div>
+
+      {/* Extracted Skills */}
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
+        <FieldLabel>Extracted Skills</FieldLabel>
+        {noSkills ? (
+          <p style={{ fontSize: 14, color: C.muted, margin: 0 }}>General fresher stack — no specific technologies detected.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {Object.entries(entry.extractedSkills).map(([cat, skills]) => (
+              <div key={cat}>
+                <p style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 8px" }}>{cat}</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {skills.map((s) => (
+                    <span key={s} style={{ fontSize: 12, fontWeight: 500, padding: "4px 10px", borderRadius: 20, border: `1px solid ${C.accent}33`, backgroundColor: `${C.accent}0d`, color: C.accent }}>
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Checklist + Plan — 2 col */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
+          <FieldLabel>Interview Checklist</FieldLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {Object.entries(entry.checklist).map(([round, items]) => (
+              <div key={round}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: "0 0 6px" }}>{round}</p>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {items.map((item) => (
+                    <li key={item} style={{ fontSize: 12, color: C.muted, lineHeight: 1.8 }}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
+          <FieldLabel>7-Day Prep Plan</FieldLabel>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {entry.plan.map((row, i) => (
+              <div key={row.day} style={{ padding: "10px 0", borderBottom: i < entry.plan.length - 1 ? `1px solid ${C.border}` : "none", display: "flex", gap: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, minWidth: 42, flexShrink: 0, paddingTop: 1 }}>{row.day}</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: "0 0 2px" }}>{row.topic}</p>
+                  <p style={{ fontSize: 11, color: C.muted, margin: 0, lineHeight: 1.5 }}>{row.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Interview Questions */}
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
+        <FieldLabel>Interview Questions ({entry.questions.length})</FieldLabel>
+        <ol style={{ margin: 0, paddingLeft: 20 }}>
+          {entry.questions.map((q, i) => (
+            <li key={i} style={{ fontSize: 14, color: C.text, lineHeight: 1.8 }}>{q}</li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   GENERIC WORKSPACE CARDS (steps 5–7)
 ══════════════════════════════════════════════════════ */
 function WorkspaceCards({ stepNumber }: { stepNumber: number }) {
   const [output, setOutput] = useState("");
