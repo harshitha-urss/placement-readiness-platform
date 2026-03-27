@@ -1,0 +1,213 @@
+Follow ALL instructions strictly.
+Do NOT change routes.
+Do NOT remove existing features.
+Keep premium design.
+No external APIs.
+Everything must work offline.
+
+---
+
+## STEP 6: COMPANY INTEL + ROUND MAPPING
+
+1. Company Intel (Results view)
+
+If company exists:
+
+Show card:
+
+* Company name
+* Industry:
+
+  * Infer from keywords or default "Technology Services"
+* Company size:
+
+  * Startup (<200)
+  * Mid-size (200–2000)
+  * Enterprise (2000+)
+
+Heuristics:
+
+* Known companies (Amazon, Infosys, TCS) → Enterprise
+* Unknown → Startup
+
+Add:
+"Typical Hiring Focus"
+
+* Enterprise → DSA + core fundamentals
+* Startup → problem solving + stack depth
+
+---
+
+2. Round Mapping Engine
+
+Based on company type + detected skills:
+
+Enterprise:
+
+* Round 1: Online Test (DSA + Aptitude)
+* Round 2: Technical (DSA + Core CS)
+* Round 3: Tech + Projects
+* Round 4: HR
+
+Startup:
+
+* Round 1: Practical coding
+* Round 2: System discussion
+* Round 3: Culture fit
+
+Display as vertical timeline.
+Add short "Why this matters" under each round.
+
+Persist this in history entry.
+
+---
+
+## STEP 7: DATA MODEL + VALIDATION
+
+1. Input validation
+
+* JD textarea required
+* If JD < 200 chars:
+  show calm warning:
+  "This JD is too short to analyze deeply. Paste full JD for better output."
+* Company and role optional
+
+---
+
+2. Standardized history schema
+
+Each entry must include:
+
+{
+id,
+createdAt,
+company: string,
+role: string,
+jdText: string,
+extractedSkills: {
+coreCS: [],
+languages: [],
+web: [],
+data: [],
+cloud: [],
+testing: [],
+other: []
+},
+roundMapping: [{ roundTitle, focusAreas, whyItMatters }],
+checklist: [{ roundTitle, items }],
+plan7Days: [{ day, focus, tasks }],
+questions: [],
+baseScore: number,
+skillConfidenceMap: { skill: "know" | "practice" },
+finalScore: number,
+updatedAt: string
+}
+
+---
+
+3. Default behavior
+
+If no skills detected:
+
+* populate "other":
+  ["Communication", "Problem solving", "Basic coding", "Projects"]
+
+---
+
+4. Score stability rules
+
+* baseScore calculated only during analyze
+* finalScore updates ONLY via skill toggles
+* On toggle:
+  update finalScore + updatedAt
+  persist in history
+
+---
+
+5. History robustness
+
+If corrupted entry found:
+
+* skip entry
+* show:
+  "One saved entry couldn't be loaded. Create a new analysis."
+
+---
+
+## STEP 8: TEST CHECKLIST SYSTEM
+
+1. Checklist UI (/prp/07-test)
+
+Include:
+
+* JD validation works
+* Short JD warning shows
+* Skills extraction grouped correctly
+* Round mapping adapts to company
+* Score calculation deterministic
+* Skill toggles update score live
+* Changes persist after refresh
+* History saves and loads correctly
+* Export works
+* No console errors
+
+Each item:
+
+* checkbox
+* optional "How to test" hint
+
+---
+
+2. Summary
+
+Show:
+"Tests Passed: X / 10"
+
+If <10:
+show:
+"Fix issues before shipping."
+
+---
+
+3. Ship lock
+
+Route /prp/08-ship:
+
+* Lock access until all 10 tests are checked
+
+---
+
+4. Reset
+
+Add button:
+"Reset checklist"
+
+---
+
+5. Persistence
+
+Checklist state must persist in localStorage
+
+---
+
+## STRICT RULES
+
+* Do NOT break layout
+* Do NOT redesign UI
+* Use existing components
+* Keep everything inside Primary Workspace
+
+---
+
+## FINAL OUTPUT
+
+Confirm:
+
+* Company intel renders correctly
+* Round mapping adapts dynamically
+* Validation works
+* Schema consistent
+* Checklist persists
+* Ship lock works
+
+Return confirmation only.
