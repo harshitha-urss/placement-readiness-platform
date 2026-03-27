@@ -16,6 +16,16 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## KodNest Premium Build System
+
+React + Vite frontend-only artifact at `artifacts/kodnest/`. Production-grade SaaS UI following strict design rules:
+- Background `#F7F6F3`, Text `#111111`, Accent `#8B0000`, Success muted green, Warning muted amber
+- Serif headings (Georgia), Sans-serif body (Inter, 16–18px, line-height 1.6–1.8)
+- Spacing scale: 8, 16, 24, 40, 64px only
+- Page structure: TopBar → ContextHeader → Primary Workspace (70%) + Secondary Panel (30%) → ProofFooter
+- 7-step build workflow with copyable AI prompts, output capture, and interactive proof checklist
+- No shadows, no gradients, no glassmorphism — transitions 150ms ease-in-out only
+
 ## Structure
 
 ```text

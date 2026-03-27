@@ -1,0 +1,185 @@
+You are building a production-grade SaaS UI system.
+
+Follow EVERY instruction strictly. Do NOT skip steps. Do NOT add features. Do NOT improvise.
+
+---
+
+## PROJECT: KodNest Premium Build System
+
+This is NOT a student project.
+This MUST feel like a serious B2C product company.
+
+---
+
+## GLOBAL DESIGN RULES (NON-NEGOTIABLE)
+
+Design Philosophy:
+
+* Calm, Intentional, Coherent, Confident
+* No flashy UI, no gradients, no glassmorphism, no neon, no unnecessary animations
+
+Color System (MAX 4 COLORS TOTAL):
+
+* Background: #F7F6F3
+* Primary Text: #111111
+* Accent: #8B0000
+* Success: Muted Green
+* Warning: Muted Amber
+
+Typography:
+
+* Headings: Serif, large, spacious
+* Body: Sans-serif, 16–18px, line-height 1.6–1.8
+* Max text width: 720px
+* No decorative fonts
+
+Spacing System (STRICT SCALE ONLY):
+
+* 8px, 16px, 24px, 40px, 64px
+* NO random spacing values allowed
+
+---
+
+## GLOBAL LAYOUT STRUCTURE (ALL PAGES)
+
+Every page MUST follow:
+
+[Top Bar]
+[Context Header]
+[Primary Workspace (70%)]
+[Secondary Panel (30%)]
+[Proof Footer]
+
+---
+
+## TOP BAR
+
+* Left: Project Name
+* Center: Progress Indicator (Step X / Y)
+* Right: Status Badge (Not Started / In Progress / Shipped)
+
+---
+
+## CONTEXT HEADER
+
+* Large serif headline
+* One-line subtext
+* Clear purpose
+* No hype or marketing language
+
+---
+
+## PRIMARY WORKSPACE (70%)
+
+* Main interaction area
+* Clean cards
+* No clutter
+* Consistent component usage
+
+---
+
+## SECONDARY PANEL (30%)
+
+Must include:
+
+* Step explanation (short)
+* Copyable prompt box
+* Buttons:
+
+  * Copy
+  * Build in Lovable
+  * It Worked
+  * Error
+  * Add Screenshot
+
+Styling must be calm and minimal.
+
+---
+
+## PROOF FOOTER (PERSISTENT)
+
+Checklist (interactive):
+☐ UI Built
+☐ Logic Working
+☐ Test Passed
+☐ Deployed
+
+Each requires user proof input.
+
+---
+
+## COMPONENT RULES
+
+Buttons:
+
+* Primary: solid deep red (#8B0000)
+* Secondary: outlined
+* Same border radius and hover everywhere
+
+Inputs:
+
+* Clean borders
+* No heavy shadows
+* Clear focus state
+
+Cards:
+
+* Subtle borders only
+* No drop shadows
+* Balanced padding
+
+---
+
+## INTERACTION RULES
+
+* Transitions: 150–200ms
+* ease-in-out only
+* No bounce, no parallax
+
+---
+
+## ERROR & EMPTY STATES
+
+Errors:
+
+* Explain issue clearly
+* Provide fix
+* Never blame user
+
+Empty States:
+
+* Always suggest next action
+* Never feel dead
+
+---
+
+## STRICT INSTRUCTION
+
+Everything must feel like ONE designer built it.
+No inconsistencies.
+No visual drift.
+
+---
+
+## CRITICAL RULE
+
+DO NOT implement any product features yet.
+
+ONLY build the COMPLETE DESIGN SYSTEM UI.
+
+---
+
+## REFERENCE CONTEXT
+
+Follow all constraints exactly as defined in this source:
+
+
+---
+
+## FINAL OUTPUT
+
+After completing:
+
+* Confirm design system is created
+* Confirm all rules are followed
+* Do NOT add explanations unless asked
