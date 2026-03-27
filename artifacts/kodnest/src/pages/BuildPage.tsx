@@ -1,4 +1,11 @@
 import { useState } from "react";
+import {
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  ResponsiveContainer,
+} from "recharts";
 
 /* ─── Color tokens (matching #F7F6F3 / #111111 / #8B0000) ─── */
 const C = {
@@ -207,6 +214,8 @@ export function BuildPage() {
           <div style={{ height: 32 }} />
           {currentStep === 1 ? (
             <Step1Workspace />
+          ) : currentStep === 2 ? (
+            <Step2Workspace />
           ) : (
             <WorkspaceCards stepNumber={currentStep} />
           )}
@@ -729,7 +738,375 @@ function PlaceholderPage({ label }: { label: string }) {
 }
 
 /* ══════════════════════════════════════════════════════
-   GENERIC WORKSPACE CARDS (steps 2–7)
+   STEP 2 WORKSPACE — Dashboard Components
+══════════════════════════════════════════════════════ */
+
+const RADAR_DATA = [
+  { skill: "DSA", value: 75 },
+  { skill: "System Design", value: 60 },
+  { skill: "Communication", value: 80 },
+  { skill: "Resume", value: 85 },
+  { skill: "Aptitude", value: 70 },
+];
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const COMPLETED_DAYS = [true, true, true, true, false, false, false];
+
+const ASSESSMENTS = [
+  { title: "DSA Mock Test", time: "Tomorrow · 10:00 AM" },
+  { title: "System Design Review", time: "Wed · 2:00 PM" },
+  { title: "HR Interview Prep", time: "Friday · 11:00 AM" },
+];
+
+function Step2Workspace() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Row 1 — Readiness + Skill Breakdown */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 16,
+        }}
+      >
+        {/* ── Readiness Score ── */}
+        <DashCard title="Overall Readiness">
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+              padding: "8px 0",
+            }}
+          >
+            <ReadinessCircle score={72} />
+            <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
+              Your placement readiness score
+            </p>
+          </div>
+        </DashCard>
+
+        {/* ── Skill Breakdown ── */}
+        <DashCard title="Skill Breakdown">
+          <ResponsiveContainer width="100%" height={180}>
+            <RadarChart data={RADAR_DATA} margin={{ top: 8, right: 16, bottom: 8, left: 16 }}>
+              <PolarGrid stroke={C.border} />
+              <PolarAngleAxis
+                dataKey="skill"
+                tick={{
+                  fontSize: 11,
+                  fill: C.muted,
+                  fontFamily: "Inter, system-ui, sans-serif",
+                }}
+              />
+              <Radar
+                dataKey="value"
+                stroke={C.accent}
+                fill={C.accent}
+                fillOpacity={0.12}
+                strokeWidth={1.5}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </DashCard>
+      </div>
+
+      {/* Row 2 — Continue Practice + Weekly Goals */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 16,
+        }}
+      >
+        {/* ── Continue Practice ── */}
+        <DashCard title="Continue Practice">
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: "0 0 4px" }}>
+                Dynamic Programming
+              </p>
+              <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
+                3 of 10 problems completed
+              </p>
+            </div>
+
+            {/* progress bar */}
+            <div
+              style={{
+                height: 6,
+                backgroundColor: C.mutedBg,
+                borderRadius: 3,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  width: "30%",
+                  height: "100%",
+                  backgroundColor: C.accent,
+                  borderRadius: 3,
+                  transition: "width 300ms ease-in-out",
+                }}
+              />
+            </div>
+
+            <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>3 / 10</p>
+
+            <button
+              style={{
+                alignSelf: "flex-start",
+                backgroundColor: C.accent,
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: 6,
+                padding: "8px 20px",
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: "inherit",
+                cursor: "pointer",
+                transition: "opacity 150ms ease-in-out",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              Continue
+            </button>
+          </div>
+        </DashCard>
+
+        {/* ── Weekly Goals ── */}
+        <DashCard title="Weekly Goals">
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                }}
+              >
+                <p style={{ fontSize: 14, color: C.text, margin: 0 }}>
+                  Problems Solved
+                </p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: C.accent, margin: 0 }}>
+                  12 / 20
+                </p>
+              </div>
+              <div
+                style={{
+                  height: 6,
+                  backgroundColor: C.mutedBg,
+                  borderRadius: 3,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: "60%",
+                    height: "100%",
+                    backgroundColor: C.accent,
+                    borderRadius: 3,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Day circles */}
+            <div>
+              <p style={{ fontSize: 11, color: C.muted, margin: "0 0 10px", letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: 600 }}>
+                This Week
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                {DAYS.map((day, i) => {
+                  const done = COMPLETED_DAYS[i];
+                  return (
+                    <div
+                      key={day}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: "50%",
+                          border: `1.5px solid ${done ? C.accent : C.border}`,
+                          backgroundColor: done ? C.accent : "transparent",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {done && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path
+                              d="M1 4L3.5 6.5L9 1"
+                              stroke="white"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: done ? C.accent : C.muted,
+                          fontWeight: done ? 600 : 400,
+                        }}
+                      >
+                        {day}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </DashCard>
+      </div>
+
+      {/* Row 3 — Upcoming Assessments (full width) */}
+      <DashCard title="Upcoming Assessments">
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {ASSESSMENTS.map((item, i) => (
+            <div
+              key={item.title}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "12px 0",
+                borderBottom:
+                  i < ASSESSMENTS.length - 1 ? `1px solid ${C.border}` : "none",
+              }}
+            >
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 500, color: C.text, margin: "0 0 2px" }}>
+                  {item.title}
+                </p>
+                <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+                  {item.time}
+                </p>
+              </div>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 500,
+                  padding: "4px 10px",
+                  borderRadius: 20,
+                  backgroundColor: C.mutedBg,
+                  color: C.muted,
+                  border: `1px solid ${C.border}`,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Upcoming
+              </span>
+            </div>
+          ))}
+        </div>
+      </DashCard>
+    </div>
+  );
+}
+
+/* SVG circular progress */
+function ReadinessCircle({ score }: { score: number }) {
+  const size = 120;
+  const stroke = 8;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+
+  return (
+    <div style={{ position: "relative", width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        {/* Track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={C.border}
+          strokeWidth={stroke}
+        />
+        {/* Progress */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={C.accent}
+          strokeWidth={stroke}
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+        />
+      </svg>
+      {/* Center label */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <span style={{ fontSize: 24, fontWeight: 700, color: C.text, lineHeight: 1 }}>
+          {score}
+        </span>
+        <span style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>/ 100</span>
+      </div>
+    </div>
+  );
+}
+
+/* Shared card wrapper for dashboard */
+function DashCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        border: `1px solid ${C.border}`,
+        borderRadius: 8,
+        backgroundColor: C.card,
+        padding: 24,
+      }}
+    >
+      <p
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: C.muted,
+          margin: "0 0 16px",
+        }}
+      >
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   GENERIC WORKSPACE CARDS (steps 3–7)
 ══════════════════════════════════════════════════════ */
 function WorkspaceCards({ stepNumber }: { stepNumber: number }) {
   const [output, setOutput] = useState("");
