@@ -1,0 +1,132 @@
+Now implement Step 3: Analysis Logic inside the existing KodNest Premium Build System.
+
+DO NOT change layout.
+DO NOT redesign UI.
+ONLY add logic and connect it to existing Primary Workspace components.
+
+---
+
+## STEP 3: ANALYSIS LOGIC
+
+1. Create input handling:
+
+* Use existing textarea in Primary Workspace as Job Description (JD input)
+* Add fields for:
+
+  * Company Name
+  * Role
+
+2. Skill Extraction (heuristic, case-insensitive):
+
+Detect keywords from JD:
+
+Core CS:
+DSA, OOP, DBMS, OS, Networks
+
+Languages:
+Java, Python, JavaScript, TypeScript, C, C++, C#, Go
+
+Web:
+React, Next.js, Node.js, Express, REST, GraphQL
+
+Data:
+SQL, MongoDB, PostgreSQL, MySQL, Redis
+
+Cloud/DevOps:
+AWS, Azure, GCP, Docker, Kubernetes, CI/CD, Linux
+
+Testing:
+Selenium, Cypress, Playwright, JUnit, PyTest
+
+If no skills detected:
+→ show "General fresher stack"
+
+---
+
+3. Generate Output:
+
+A) Extracted Skills
+
+* Group by category
+* Display as tags/cards
+
+B) Checklist:
+
+Round 1: Aptitude
+Round 2: DSA + Core
+Round 3: Tech Interview
+Round 4: HR
+
+Each round:
+
+* 5–8 items based on detected skills
+
+C) 7-Day Plan:
+
+Day 1–2: Core CS
+Day 3–4: DSA
+Day 5: Projects
+Day 6: Mock Interviews
+Day 7: Revision
+
+Adapt based on skills (React → frontend prep, SQL → DB prep)
+
+D) Interview Questions:
+
+Generate 10 questions based on detected skills
+
+---
+
+4. Readiness Score:
+
+Start = 35
+
++5 per category detected (max 30)
++10 if company exists
++10 if role exists
++10 if JD length > 800 chars
+
+Cap = 100
+
+Display score clearly in UI
+
+---
+
+5. Save to localStorage:
+
+On "Analyze" action, store:
+
+{
+id,
+createdAt,
+company,
+role,
+jdText,
+extractedSkills,
+checklist,
+plan,
+questions,
+readinessScore
+}
+
+---
+
+## STRICT RULES
+
+* Do NOT break layout
+* Do NOT redesign UI
+* Use existing components
+* Keep logic clean and modular
+
+---
+
+## FINAL CHECK
+
+Confirm:
+
+* Skill extraction works
+* Score updates correctly
+* Data saves to localStorage
+* Works after refresh
+
+Return confirmation only.

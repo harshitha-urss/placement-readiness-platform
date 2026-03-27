@@ -216,6 +216,8 @@ export function BuildPage() {
             <Step1Workspace />
           ) : currentStep === 2 ? (
             <Step2Workspace />
+          ) : currentStep === 3 ? (
+            <Step3Workspace />
           ) : (
             <WorkspaceCards stepNumber={currentStep} />
           )}
@@ -1106,7 +1108,551 @@ function DashCard({
 }
 
 /* ══════════════════════════════════════════════════════
-   GENERIC WORKSPACE CARDS (steps 3–7)
+   STEP 3 WORKSPACE — Analysis Logic
+══════════════════════════════════════════════════════ */
+
+/* ── Skill categories & keywords ── */
+const SKILL_MAP: Record<string, string[]> = {
+  "Core CS":    ["DSA", "OOP", "DBMS", "OS", "Networks"],
+  "Languages":  ["Java", "Python", "JavaScript", "TypeScript", "C++", "C#", "Go"],
+  "Web":        ["React", "Next.js", "Node.js", "Express", "REST", "GraphQL"],
+  "Data":       ["SQL", "MongoDB", "PostgreSQL", "MySQL", "Redis"],
+  "Cloud/DevOps": ["AWS", "Azure", "GCP", "Docker", "Kubernetes", "CI/CD", "Linux"],
+  "Testing":    ["Selenium", "Cypress", "Playwright", "JUnit", "PyTest"],
+};
+
+/* ── Extract skills from JD text ── */
+function extractSkills(jd: string): Record<string, string[]> {
+  const lower = jd.toLowerCase();
+  const found: Record<string, string[]> = {};
+  for (const [cat, keywords] of Object.entries(SKILL_MAP)) {
+    const hits = keywords.filter((kw) => lower.includes(kw.toLowerCase()));
+    if (hits.length > 0) found[cat] = hits;
+  }
+  return found;
+}
+
+/* ── Readiness score ── */
+function calcScore(
+  skills: Record<string, string[]>,
+  company: string,
+  role: string,
+  jd: string,
+): number {
+  let score = 35;
+  score += Math.min(Object.keys(skills).length * 5, 30);
+  if (company.trim().length > 0) score += 10;
+  if (role.trim().length > 0) score += 10;
+  if (jd.length > 800) score += 10;
+  return Math.min(score, 100);
+}
+
+/* ── Checklist generator ── */
+function genChecklist(skills: Record<string, string[]>): Record<string, string[]> {
+  const hasDSA     = !!skills["Core CS"];
+  const hasWeb     = !!skills["Web"];
+  const hasDB      = !!skills["Data"];
+  const hasCloud   = !!skills["Cloud/DevOps"];
+  const hasTesting = !!skills["Testing"];
+
+  return {
+    "Round 1 — Aptitude": [
+      "Quantitative reasoning",
+      "Logical puzzles",
+      "Verbal ability",
+      "Number series",
+      "Data interpretation",
+    ],
+    "Round 2 — DSA + Core": [
+      ...(hasDSA ? ["Arrays & Strings", "Linked Lists", "Trees & Graphs", "DP basics"] : ["Data structures overview"]),
+      "OOP principles",
+      "OS concepts (processes, threads)",
+      "DBMS normalization",
+    ],
+    "Round 3 — Tech Interview": [
+      ...(hasWeb  ? ["React component lifecycle", "REST API design", "State management"] : []),
+      ...(hasDB   ? ["SQL query optimization", "Indexing strategies"] : []),
+      ...(hasCloud? ["Docker containerization", "CI/CD pipeline setup"] : []),
+      ...(hasTesting ? ["Test case design", "Unit vs integration testing"] : []),
+      "System design basics",
+      "Code walkthrough of personal projects",
+    ].slice(0, 8),
+    "Round 4 — HR": [
+      "Tell me about yourself",
+      "Strengths and weaknesses",
+      "Why this company?",
+      "Conflict resolution scenario",
+      "5-year career plan",
+    ],
+  };
+}
+
+/* ── 7-day plan generator ── */
+function genPlan(skills: Record<string, string[]>): { day: string; topic: string; detail: string }[] {
+  const hasWeb   = !!skills["Web"];
+  const hasDB    = !!skills["Data"];
+  const hasDSA   = !!skills["Core CS"];
+
+  return [
+    { day: "Day 1", topic: "Core CS Foundations", detail: hasDSA ? "OS, Networks, OOP deep-dive" : "CS fundamentals review" },
+    { day: "Day 2", topic: "DBMS + SQL", detail: hasDB ? "Normalization, joins, query optimization" : "Database basics & relational models" },
+    { day: "Day 3", topic: "DSA — Arrays & Trees", detail: "Sorting, searching, BST, recursion" },
+    { day: "Day 4", topic: "DSA — DP & Graphs", detail: "Memoization, BFS/DFS, common patterns" },
+    { day: "Day 5", topic: "Projects & Tech Stack", detail: hasWeb ? "Frontend build + API integration walkthrough" : "Showcase 2 projects with design decisions" },
+    { day: "Day 6", topic: "Mock Interviews", detail: "2 timed coding rounds + 1 system design" },
+    { day: "Day 7", topic: "Revision & HR Prep", detail: "Flash-card review + 20 HR question run-through" },
+  ];
+}
+
+/* ── Interview questions generator ── */
+function genQuestions(skills: Record<string, string[]>): string[] {
+  const pool: string[] = [
+    "Explain the difference between a process and a thread.",
+    "What is Big O notation? Analyze a bubble sort.",
+    "How does HTTPS work?",
+    "Describe a challenging project and how you solved a key problem.",
+    "What are SOLID principles in OOP?",
+  ];
+  if (skills["Web"]) pool.push(
+    "How does React's virtual DOM work?",
+    "Explain REST vs GraphQL trade-offs.",
+    "What is server-side rendering and when would you use it?",
+  );
+  if (skills["Data"]) pool.push(
+    "What is database indexing and when does it hurt performance?",
+    "Explain ACID properties in databases.",
+  );
+  if (skills["Cloud/DevOps"]) pool.push(
+    "What problem does Docker solve? How does it differ from a VM?",
+    "Describe a CI/CD pipeline you have set up or used.",
+  );
+  if (skills["Core CS"]) pool.push(
+    "Implement LRU Cache.",
+    "Find the shortest path in an unweighted graph.",
+  );
+  if (skills["Testing"]) pool.push(
+    "What is the testing pyramid? Where do integration tests fit?",
+  );
+  return pool.slice(0, 10);
+}
+
+/* ── localStorage key ── */
+const LS_KEY = "kodnest_step3_analysis";
+
+/* ── Types ── */
+interface AnalysisResult {
+  id: string;
+  createdAt: string;
+  company: string;
+  role: string;
+  jdText: string;
+  extractedSkills: Record<string, string[]>;
+  checklist: Record<string, string[]>;
+  plan: { day: string; topic: string; detail: string }[];
+  questions: string[];
+  readinessScore: number;
+}
+
+/* ── Main Step3 component ── */
+function Step3Workspace() {
+  const [company, setCompany] = useState("");
+  const [role, setRole] = useState("");
+  const [jd, setJd] = useState("");
+  const [result, setResult] = useState<AnalysisResult | null>(() => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleAnalyze = () => {
+    const skills = extractSkills(jd);
+    const score  = calcScore(skills, company, role, jd);
+    const data: AnalysisResult = {
+      id:              crypto.randomUUID(),
+      createdAt:       new Date().toISOString(),
+      company, role,
+      jdText:          jd,
+      extractedSkills: skills,
+      checklist:       genChecklist(skills),
+      plan:            genPlan(skills),
+      questions:       genQuestions(skills),
+      readinessScore:  score,
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(data));
+    setResult(data);
+  };
+
+  const handleReset = () => {
+    localStorage.removeItem(LS_KEY);
+    setResult(null);
+    setCompany(""); setRole(""); setJd("");
+  };
+
+  return result ? (
+    <AnalysisOutput result={result} onReset={handleReset} />
+  ) : (
+    <AnalysisInput
+      company={company} setCompany={setCompany}
+      role={role} setRole={setRole}
+      jd={jd} setJd={setJd}
+      onAnalyze={handleAnalyze}
+    />
+  );
+}
+
+/* ── Input form ── */
+function AnalysisInput({
+  company, setCompany, role, setRole, jd, setJd, onAnalyze,
+}: {
+  company: string; setCompany: (v: string) => void;
+  role: string; setRole: (v: string) => void;
+  jd: string; setJd: (v: string) => void;
+  onAnalyze: () => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Company + Role row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div
+          style={{
+            border: `1px solid ${C.border}`, borderRadius: 8,
+            backgroundColor: C.card, padding: 24,
+          }}
+        >
+          <FieldLabel>Company Name</FieldLabel>
+          <input
+            type="text"
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            placeholder="e.g. Google, Infosys…"
+            style={inputStyle()}
+            onFocus={(e) => (e.target.style.borderColor = C.accent)}
+            onBlur={(e)  => (e.target.style.borderColor = C.border)}
+          />
+        </div>
+        <div
+          style={{
+            border: `1px solid ${C.border}`, borderRadius: 8,
+            backgroundColor: C.card, padding: 24,
+          }}
+        >
+          <FieldLabel>Role</FieldLabel>
+          <input
+            type="text"
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            placeholder="e.g. SDE-1, Frontend Engineer…"
+            style={inputStyle()}
+            onFocus={(e) => (e.target.style.borderColor = C.accent)}
+            onBlur={(e)  => (e.target.style.borderColor = C.border)}
+          />
+        </div>
+      </div>
+
+      {/* JD textarea */}
+      <div
+        style={{
+          border: `1px solid ${C.border}`, borderRadius: 8,
+          backgroundColor: C.card, padding: 24,
+        }}
+      >
+        <FieldLabel>Job Description</FieldLabel>
+        <p style={{ fontSize: 13, color: C.muted, margin: "0 0 12px" }}>
+          Paste the full JD. Skills are extracted automatically.
+        </p>
+        <textarea
+          value={jd}
+          onChange={(e) => setJd(e.target.value)}
+          placeholder="Paste the job description here…"
+          rows={10}
+          style={{
+            ...inputStyle(),
+            resize: "vertical",
+            fontFamily: "inherit",
+            lineHeight: 1.65,
+          }}
+          onFocus={(e) => (e.target.style.borderColor = C.accent)}
+          onBlur={(e)  => (e.target.style.borderColor = C.border)}
+        />
+        <div
+          style={{
+            display: "flex", justifyContent: "space-between",
+            alignItems: "center", marginTop: 16,
+          }}
+        >
+          <span style={{ fontSize: 12, color: C.muted }}>
+            {jd.length} chars{jd.length > 800 ? " · +10 readiness" : ""}
+          </span>
+          <button
+            onClick={onAnalyze}
+            disabled={jd.trim().length < 20}
+            style={{
+              backgroundColor: jd.trim().length < 20 ? C.mutedBg : C.accent,
+              color: jd.trim().length < 20 ? C.muted : "#FFFFFF",
+              border: "none",
+              borderRadius: 6,
+              padding: "10px 28px",
+              fontSize: 14,
+              fontWeight: 600,
+              fontFamily: "inherit",
+              cursor: jd.trim().length < 20 ? "not-allowed" : "pointer",
+              transition: "all 150ms ease-in-out",
+            }}
+            onMouseEnter={(e) => { if (jd.trim().length >= 20) e.currentTarget.style.opacity = "0.85"; }}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          >
+            Analyze JD
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Output panels ── */
+function AnalysisOutput({ result, onReset }: { result: AnalysisResult; onReset: () => void }) {
+  const noSkills = Object.keys(result.extractedSkills).length === 0;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Header row: meta + score + reset */}
+      <div
+        style={{
+          border: `1px solid ${C.border}`, borderRadius: 8,
+          backgroundColor: C.card, padding: 24,
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}
+      >
+        <div>
+          {result.company && (
+            <p style={{ fontSize: 16, fontWeight: 600, color: C.text, margin: "0 0 2px" }}>
+              {result.company} {result.role ? `— ${result.role}` : ""}
+            </p>
+          )}
+          <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+            Analyzed {new Date(result.createdAt).toLocaleString()}
+          </p>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+          {/* Score pill */}
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                fontSize: 28, fontWeight: 700, color: C.accent,
+                fontFamily: "Georgia, serif", lineHeight: 1,
+              }}
+            >
+              {result.readinessScore}
+            </div>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 2, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              Readiness Score
+            </div>
+          </div>
+
+          <button
+            onClick={onReset}
+            style={{
+              border: `1px solid ${C.border}`, borderRadius: 6,
+              backgroundColor: "transparent", color: C.muted,
+              padding: "8px 16px", fontSize: 13, fontFamily: "inherit",
+              cursor: "pointer", transition: "all 150ms ease-in-out",
+            }}
+          >
+            Analyze New JD
+          </button>
+        </div>
+      </div>
+
+      {/* Readiness bar */}
+      <div
+        style={{
+          border: `1px solid ${C.border}`, borderRadius: 8,
+          backgroundColor: C.card, padding: "16px 24px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Readiness
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: C.accent }}>
+            {result.readinessScore} / 100
+          </span>
+        </div>
+        <div style={{ height: 8, backgroundColor: C.mutedBg, borderRadius: 4, overflow: "hidden" }}>
+          <div
+            style={{
+              width: `${result.readinessScore}%`, height: "100%",
+              backgroundColor: C.accent, borderRadius: 4,
+              transition: "width 400ms ease-in-out",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Extracted Skills */}
+      <div
+        style={{
+          border: `1px solid ${C.border}`, borderRadius: 8,
+          backgroundColor: C.card, padding: 24,
+        }}
+      >
+        <FieldLabel>Extracted Skills</FieldLabel>
+        {noSkills ? (
+          <p style={{ fontSize: 14, color: C.muted, margin: 0 }}>
+            No specific stack detected — preparing General Fresher Stack.
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {Object.entries(result.extractedSkills).map(([cat, skills]) => (
+              <div key={cat}>
+                <p style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 8px" }}>
+                  {cat}
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {skills.map((s) => (
+                    <span
+                      key={s}
+                      style={{
+                        fontSize: 12, fontWeight: 500,
+                        padding: "4px 10px", borderRadius: 20,
+                        border: `1px solid ${C.accent}33`,
+                        backgroundColor: `${C.accent}0d`, color: C.accent,
+                      }}
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 2-col: Checklist + 7-Day Plan */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        {/* Checklist */}
+        <div
+          style={{
+            border: `1px solid ${C.border}`, borderRadius: 8,
+            backgroundColor: C.card, padding: 24,
+          }}
+        >
+          <FieldLabel>Interview Checklist</FieldLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {Object.entries(result.checklist).map(([round, items]) => (
+              <div key={round}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: "0 0 8px" }}>
+                  {round}
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {items.map((item) => (
+                    <li key={item} style={{ fontSize: 13, color: C.muted, lineHeight: 1.8 }}>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 7-Day Plan */}
+        <div
+          style={{
+            border: `1px solid ${C.border}`, borderRadius: 8,
+            backgroundColor: C.card, padding: 24,
+          }}
+        >
+          <FieldLabel>7-Day Prep Plan</FieldLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {result.plan.map((row, i) => (
+              <div
+                key={row.day}
+                style={{
+                  padding: "10px 0",
+                  borderBottom: i < result.plan.length - 1 ? `1px solid ${C.border}` : "none",
+                  display: "flex", gap: 12, alignItems: "flex-start",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11, fontWeight: 600, color: C.accent,
+                    minWidth: 42, flexShrink: 0, paddingTop: 1,
+                  }}
+                >
+                  {row.day}
+                </span>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: C.text, margin: "0 0 2px" }}>
+                    {row.topic}
+                  </p>
+                  <p style={{ fontSize: 12, color: C.muted, margin: 0, lineHeight: 1.5 }}>
+                    {row.detail}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Interview Questions */}
+      <div
+        style={{
+          border: `1px solid ${C.border}`, borderRadius: 8,
+          backgroundColor: C.card, padding: 24,
+        }}
+      >
+        <FieldLabel>Interview Questions ({result.questions.length})</FieldLabel>
+        <ol style={{ margin: 0, paddingLeft: 20 }}>
+          {result.questions.map((q, i) => (
+            <li key={i} style={{ fontSize: 14, color: C.text, lineHeight: 1.8 }}>
+              {q}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
+/* ── Shared small helpers ── */
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      style={{
+        fontSize: 11, fontWeight: 600, letterSpacing: "0.08em",
+        textTransform: "uppercase", color: C.muted, margin: "0 0 10px",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function inputStyle(): React.CSSProperties {
+  return {
+    width: "100%",
+    padding: "10px 12px",
+    fontSize: 14,
+    border: `1px solid ${C.border}`,
+    borderRadius: 6,
+    backgroundColor: C.bg,
+    color: C.text,
+    fontFamily: "inherit",
+    outline: "none",
+    boxSizing: "border-box",
+    transition: "border-color 150ms ease-in-out",
+  };
+}
+
+/* ══════════════════════════════════════════════════════
+   GENERIC WORKSPACE CARDS (steps 4–7)
 ══════════════════════════════════════════════════════ */
 function WorkspaceCards({ stepNumber }: { stepNumber: number }) {
   const [output, setOutput] = useState("");
