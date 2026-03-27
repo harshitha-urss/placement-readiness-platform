@@ -205,7 +205,11 @@ export function BuildPage() {
             onSelect={setCurrentStep}
           />
           <div style={{ height: 32 }} />
-          <WorkspaceCards stepNumber={currentStep} />
+          {currentStep === 1 ? (
+            <Step1Workspace />
+          ) : (
+            <WorkspaceCards stepNumber={currentStep} />
+          )}
         </main>
 
         {/* SECONDARY PANEL — 30% */}
@@ -415,7 +419,317 @@ function StepNavigation({
 }
 
 /* ══════════════════════════════════════════════════════
-   WORKSPACE CARDS
+   STEP 1 WORKSPACE — Application Setup
+   Only renders when currentStep === 1
+══════════════════════════════════════════════════════ */
+
+type AppPage = "landing" | "dashboard" | "practice" | "assessments" | "resources" | "profile";
+
+const NAV_ITEMS: { id: AppPage; label: string }[] = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "practice", label: "Practice" },
+  { id: "assessments", label: "Assessments" },
+  { id: "resources", label: "Resources" },
+  { id: "profile", label: "Profile" },
+];
+
+function Step1Workspace() {
+  const [page, setPage] = useState<AppPage>("landing");
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${C.border}`,
+        borderRadius: 8,
+        backgroundColor: C.card,
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* ─── Inner App Nav Bar ─── */}
+      <nav
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0,
+          borderBottom: `1px solid ${C.border}`,
+          padding: "0 24px",
+          backgroundColor: C.bg,
+          height: 48,
+        }}
+      >
+        {/* App brand */}
+        <span
+          style={{
+            fontFamily: "Georgia, serif",
+            fontWeight: 700,
+            fontSize: 14,
+            color: C.text,
+            marginRight: 32,
+            letterSpacing: "-0.01em",
+            cursor: "pointer",
+          }}
+          onClick={() => setPage("landing")}
+        >
+          KodNest App
+        </span>
+
+        {/* Nav links */}
+        {NAV_ITEMS.map((item) => {
+          const active = page === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setPage(item.id)}
+              style={{
+                padding: "0 16px",
+                height: 48,
+                fontSize: 13,
+                fontWeight: active ? 600 : 400,
+                color: active ? C.accent : C.muted,
+                background: "none",
+                border: "none",
+                borderBottom: active ? `2px solid ${C.accent}` : "2px solid transparent",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                transition: "all 150ms ease-in-out",
+              }}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ─── Inner Page Content ─── */}
+      <div style={{ padding: 40 }}>
+        {page === "landing" && <LandingPage onGetStarted={() => setPage("dashboard")} />}
+        {page !== "landing" && <PlaceholderPage label={NAV_ITEMS.find((n) => n.id === page)?.label ?? ""} />}
+      </div>
+    </div>
+  );
+}
+
+/* ── Landing Page ── */
+function LandingPage({ onGetStarted }: { onGetStarted: () => void }) {
+  const features = [
+    {
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      ),
+      title: "Practice Problems",
+      description: "Work through curated coding problems organized by topic and difficulty.",
+    },
+    {
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+      title: "Mock Interviews",
+      description: "Simulate real interview scenarios with timed sessions and structured feedback.",
+    },
+    {
+      icon: (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+      ),
+      title: "Track Progress",
+      description: "Monitor your performance over time and identify areas that need more attention.",
+    },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
+      {/* Hero */}
+      <div
+        style={{
+          textAlign: "center",
+          padding: "40px 24px",
+          borderRadius: 8,
+          border: `1px solid ${C.border}`,
+          backgroundColor: C.bg,
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: "Georgia, serif",
+            fontSize: 36,
+            fontWeight: 700,
+            color: C.text,
+            margin: "0 0 16px",
+            letterSpacing: "-0.02em",
+            lineHeight: 1.2,
+          }}
+        >
+          Ace Your Placement
+        </h2>
+        <p
+          style={{
+            fontSize: 17,
+            color: C.muted,
+            lineHeight: 1.65,
+            margin: "0 auto 32px",
+            maxWidth: 440,
+          }}
+        >
+          Practice, assess, and prepare for your dream job
+        </p>
+        <button
+          onClick={onGetStarted}
+          style={{
+            backgroundColor: C.accent,
+            color: "#FFFFFF",
+            border: "none",
+            borderRadius: 6,
+            padding: "12px 32px",
+            fontSize: 15,
+            fontWeight: 600,
+            fontFamily: "inherit",
+            cursor: "pointer",
+            transition: "opacity 150ms ease-in-out",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        >
+          Get Started
+        </button>
+      </div>
+
+      {/* Features */}
+      <div>
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: C.muted,
+            margin: "0 0 16px",
+          }}
+        >
+          What's Inside
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 16,
+          }}
+        >
+          {features.map((f) => (
+            <div
+              key={f.title}
+              style={{
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: 24,
+                backgroundColor: C.card,
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 8,
+                  border: `1px solid ${C.border}`,
+                  backgroundColor: C.bg,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {f.icon}
+              </div>
+              <div>
+                <p
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: C.text,
+                    margin: "0 0 8px",
+                  }}
+                >
+                  {f.title}
+                </p>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: C.muted,
+                    lineHeight: 1.6,
+                    margin: 0,
+                  }}
+                >
+                  {f.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <p
+        style={{
+          fontSize: 13,
+          color: C.muted,
+          textAlign: "center",
+          margin: 0,
+          paddingTop: 8,
+          borderTop: `1px solid ${C.border}`,
+        }}
+      >
+        Built for students. Designed for results.
+      </p>
+    </div>
+  );
+}
+
+/* ── Placeholder pages for nav items ── */
+function PlaceholderPage({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        border: `1px dashed ${C.border}`,
+        borderRadius: 8,
+        padding: 40,
+        textAlign: "center",
+        backgroundColor: C.bg,
+      }}
+    >
+      <p
+        style={{
+          fontFamily: "Georgia, serif",
+          fontSize: 22,
+          fontWeight: 700,
+          color: C.text,
+          margin: "0 0 8px",
+        }}
+      >
+        {label} Page
+      </p>
+      <p style={{ fontSize: 14, color: C.muted, margin: 0 }}>
+        Placeholder — content will be implemented in a future step.
+      </p>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   GENERIC WORKSPACE CARDS (steps 2–7)
 ══════════════════════════════════════════════════════ */
 function WorkspaceCards({ stepNumber }: { stepNumber: number }) {
   const [output, setOutput] = useState("");
