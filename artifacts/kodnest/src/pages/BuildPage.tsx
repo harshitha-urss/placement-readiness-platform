@@ -1823,13 +1823,138 @@ function Step4Workspace() {
   );
 }
 
-/* ── Full result detail panel ── */
+/* ── Full result detail panel (Step 5: interactive) ── */
 function HistoryDetail({ entry }: { entry: AnalysisResult }) {
-  const noSkills = Object.keys(entry.extractedSkills).length === 0;
+  const confKey   = `kodnest_skill_conf_${entry.id}`;
+  const allSkills = Object.values(entry.extractedSkills).flat();
+  const noSkills  = allSkills.length === 0;
+
+  /* ── Skill confidence map ── */
+  const [confMap, setConfMap] = useState<Record<string, "know" | "practice">>(() => {
+    try {
+      const saved   = localStorage.getItem(confKey);
+      const parsed  = saved ? JSON.parse(saved) : {};
+      const defaults: Record<string, "know" | "practice"> = {};
+      allSkills.forEach((s) => { defaults[s] = parsed[s] ?? "practice"; });
+      return defaults;
+    } catch {
+      const defaults: Record<string, "know" | "practice"> = {};
+      allSkills.forEach((s) => { defaults[s] = "practice"; });
+      return defaults;
+    }
+  });
+
+  const [copyLabel, setCopyLabel] = useState("");
+
+  /* ── Reset confMap when entry changes ── */
+  useEffect(() => {
+    try {
+      const saved  = localStorage.getItem(confKey);
+      const parsed = saved ? JSON.parse(saved) : {};
+      const next: Record<string, "know" | "practice"> = {};
+      allSkills.forEach((s) => { next[s] = parsed[s] ?? "practice"; });
+      setConfMap(next);
+    } catch {
+      const next: Record<string, "know" | "practice"> = {};
+      allSkills.forEach((s) => { next[s] = "practice"; });
+      setConfMap(next);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entry.id]);
+
+  /* ── Live score ── */
+  const knowCount     = Object.values(confMap).filter((v) => v === "know").length;
+  const practiceCount = Object.values(confMap).filter((v) => v === "practice").length;
+  const liveScore     = Math.max(0, Math.min(100, entry.readinessScore + knowCount * 2 - practiceCount * 2));
+
+  /* ── Top 3 weak skills ── */
+  const weakSkills = allSkills.filter((s) => confMap[s] === "practice").slice(0, 3);
+
+  /* ── Toggle handler ── */
+  const toggle = (skill: string) => {
+    setConfMap((prev) => {
+      const next = { ...prev, [skill]: prev[skill] === "know" ? "practice" : "know" } as Record<string, "know" | "practice">;
+      localStorage.setItem(confKey, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  /* ── Export helpers ── */
+  const flash = (label: string) => {
+    setCopyLabel(label);
+    setTimeout(() => setCopyLabel(""), 2000);
+  };
+  const copyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => flash(label)).catch(() => flash("Error"));
+  };
+  const fmtPlan      = () => entry.plan.map((r) => `${r.day}: ${r.topic}\n  ${r.detail}`).join("\n");
+  const fmtChecklist = () =>
+    Object.entries(entry.checklist)
+      .map(([round, items]) => `${round}:\n${items.map((i) => `  - ${i}`).join("\n")}`)
+      .join("\n\n");
+  const fmtQuestions = () => entry.questions.map((q, i) => `${i + 1}. ${q}`).join("\n");
+
+  const downloadAll = () => {
+    const lines = [
+      "KodNest Analysis Export",
+      "========================",
+      `Company : ${entry.company || "—"}`,
+      `Role    : ${entry.role || "—"}`,
+      `Date    : ${new Date(entry.createdAt).toLocaleString()}`,
+      `Score   : ${liveScore} / 100`,
+      "",
+      "SKILL CONFIDENCE",
+      "----------------",
+      ...allSkills.map((s) => `${s}: ${confMap[s] === "know" ? "I Know This" : "Need Practice"}`),
+      "",
+      "7-DAY PREP PLAN",
+      "---------------",
+      fmtPlan(),
+      "",
+      "INTERVIEW CHECKLIST",
+      "-------------------",
+      fmtChecklist(),
+      "",
+      "INTERVIEW QUESTIONS",
+      "-------------------",
+      fmtQuestions(),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `kodnest-${(entry.company || "analysis").replace(/\s+/g, "-")}-${entry.id.slice(0, 6)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  /* ── Shared mini button style ── */
+  const exportBtn = (label: string, onClick: () => void, active = false) => (
+    <button
+      key={label}
+      onClick={onClick}
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        padding: "6px 14px",
+        borderRadius: 6,
+        border: `1px solid ${active ? C.accent : C.border}`,
+        backgroundColor: active ? `${C.accent}12` : C.card,
+        color: active ? C.accent : C.text,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        transition: "all 150ms ease-in-out",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {active ? "✓ Copied" : label}
+    </button>
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div
         style={{
           border: `1px solid ${C.border}`,
@@ -1854,16 +1979,16 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
           </p>
         </div>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 32, fontWeight: 700, color: C.accent, fontFamily: "Georgia, serif", lineHeight: 1 }}>
-            {entry.readinessScore}
+          <div style={{ fontSize: 32, fontWeight: 700, color: C.accent, fontFamily: "Georgia, serif", lineHeight: 1, transition: "all 150ms ease-in-out" }}>
+            {liveScore}
           </div>
           <div style={{ fontSize: 10, color: C.muted, marginTop: 2, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-            Readiness
+            Live Readiness
           </div>
         </div>
       </div>
 
-      {/* Readiness bar */}
+      {/* ── Live readiness bar ── */}
       <div
         style={{
           border: `1px solid ${C.border}`,
@@ -1874,31 +1999,123 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
       >
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Readiness Score
+            Readiness Score (updates as you mark skills)
           </span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: C.accent }}>{entry.readinessScore} / 100</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.accent }}>{liveScore} / 100</span>
         </div>
         <div style={{ height: 6, backgroundColor: C.mutedBg, borderRadius: 3, overflow: "hidden" }}>
-          <div style={{ width: `${entry.readinessScore}%`, height: "100%", backgroundColor: C.accent, borderRadius: 3 }} />
+          <div
+            style={{
+              width: `${liveScore}%`,
+              height: "100%",
+              backgroundColor: C.accent,
+              borderRadius: 3,
+              transition: "width 150ms ease-in-out",
+            }}
+          />
         </div>
+        {!noSkills && (
+          <p style={{ fontSize: 11, color: C.muted, margin: "8px 0 0" }}>
+            {knowCount} known · {practiceCount} to practice · base {entry.readinessScore}
+          </p>
+        )}
       </div>
 
-      {/* Extracted Skills */}
+      {/* ── Export buttons ── */}
+      <div
+        style={{
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          backgroundColor: C.card,
+          padding: "16px 24px",
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 8,
+          alignItems: "center",
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 4 }}>
+          Export
+        </span>
+        {exportBtn(
+          "Copy 7-Day Plan",
+          () => copyText(fmtPlan(), "7-Day Plan"),
+          copyLabel === "7-Day Plan",
+        )}
+        {exportBtn(
+          "Copy Checklist",
+          () => copyText(fmtChecklist(), "Checklist"),
+          copyLabel === "Checklist",
+        )}
+        {exportBtn(
+          "Copy Questions",
+          () => copyText(fmtQuestions(), "Questions"),
+          copyLabel === "Questions",
+        )}
+        <button
+          onClick={downloadAll}
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "6px 14px",
+            borderRadius: 6,
+            border: `1px solid ${C.accent}`,
+            backgroundColor: C.accent,
+            color: "#fff",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            transition: "all 150ms ease-in-out",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Download All (.txt)
+        </button>
+      </div>
+
+      {/* ── Extracted Skills with toggles ── */}
       <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
-        <FieldLabel>Extracted Skills</FieldLabel>
+        <FieldLabel>Skill Confidence — toggle each skill</FieldLabel>
         {noSkills ? (
           <p style={{ fontSize: 14, color: C.muted, margin: 0 }}>General fresher stack — no specific technologies detected.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {Object.entries(entry.extractedSkills).map(([cat, skills]) => (
               <div key={cat}>
-                <p style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 8px" }}>{cat}</p>
+                <p style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 10px" }}>
+                  {cat}
+                </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {skills.map((s) => (
-                    <span key={s} style={{ fontSize: 12, fontWeight: 500, padding: "4px 10px", borderRadius: 20, border: `1px solid ${C.accent}33`, backgroundColor: `${C.accent}0d`, color: C.accent }}>
-                      {s}
-                    </span>
-                  ))}
+                  {skills.map((s) => {
+                    const isKnow = confMap[s] === "know";
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => toggle(s)}
+                        title={isKnow ? "Click to mark as Need Practice" : "Click to mark as I Know This"}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontSize: 12,
+                          fontWeight: 500,
+                          padding: "5px 12px",
+                          borderRadius: 20,
+                          border: `1px solid ${isKnow ? C.successBorder : C.accent + "33"}`,
+                          backgroundColor: isKnow ? C.successBg : `${C.accent}0d`,
+                          color: isKnow ? C.successText : C.accent,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                          transition: "all 150ms ease-in-out",
+                        }}
+                      >
+                        <span style={{ fontSize: 10, lineHeight: 1 }}>{isKnow ? "✓" : "○"}</span>
+                        {s}
+                        <span style={{ fontSize: 10, color: isKnow ? C.successText : C.muted, lineHeight: 1 }}>
+                          {isKnow ? "Know" : "Practice"}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -1906,7 +2123,7 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
         )}
       </div>
 
-      {/* Checklist + Plan — 2 col */}
+      {/* ── Checklist + Plan — 2 col ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
           <FieldLabel>Interview Checklist</FieldLabel>
@@ -1928,8 +2145,18 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
           <FieldLabel>7-Day Prep Plan</FieldLabel>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {entry.plan.map((row, i) => (
-              <div key={row.day} style={{ padding: "10px 0", borderBottom: i < entry.plan.length - 1 ? `1px solid ${C.border}` : "none", display: "flex", gap: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, minWidth: 42, flexShrink: 0, paddingTop: 1 }}>{row.day}</span>
+              <div
+                key={row.day}
+                style={{
+                  padding: "10px 0",
+                  borderBottom: i < entry.plan.length - 1 ? `1px solid ${C.border}` : "none",
+                  display: "flex",
+                  gap: 12,
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, minWidth: 42, flexShrink: 0, paddingTop: 1 }}>
+                  {row.day}
+                </span>
                 <div>
                   <p style={{ fontSize: 12, fontWeight: 600, color: C.text, margin: "0 0 2px" }}>{row.topic}</p>
                   <p style={{ fontSize: 11, color: C.muted, margin: 0, lineHeight: 1.5 }}>{row.detail}</p>
@@ -1940,7 +2167,7 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
         </div>
       </div>
 
-      {/* Interview Questions */}
+      {/* ── Interview Questions ── */}
       <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
         <FieldLabel>Interview Questions ({entry.questions.length})</FieldLabel>
         <ol style={{ margin: 0, paddingLeft: 20 }}>
@@ -1949,6 +2176,66 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
           ))}
         </ol>
       </div>
+
+      {/* ── Action Suggestion ── */}
+      {weakSkills.length > 0 && (
+        <div
+          style={{
+            border: `1px solid ${C.warningBorder}`,
+            borderRadius: 8,
+            backgroundColor: C.warningBg,
+            padding: 24,
+          }}
+        >
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: C.warningText,
+              margin: "0 0 10px",
+            }}
+          >
+            Focus Areas — Top Skills to Practice
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+            {weakSkills.map((s) => (
+              <span
+                key={s}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "4px 12px",
+                  borderRadius: 20,
+                  border: `1px solid ${C.warningBorder}`,
+                  backgroundColor: `${C.warningText}12`,
+                  color: C.warningText,
+                }}
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+          <button
+            onClick={() => copyText(fmtPlan(), "7-Day Plan")}
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              padding: "8px 20px",
+              borderRadius: 6,
+              border: `1px solid ${C.warningBorder}`,
+              backgroundColor: C.warningText,
+              color: "#fff",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "all 150ms ease-in-out",
+            }}
+          >
+            {copyLabel === "7-Day Plan" ? "✓ Plan Copied!" : "Start Day 1 Plan Now →"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
