@@ -1,0 +1,100 @@
+Harden the Placement Readiness Platform with strict validation, consistent data model, and edge-case handling.
+
+⚠️ NON-NEGOTIABLE:
+
+* Do NOT change routes
+* Do NOT remove existing features
+* Keep current UI intact
+
+---
+
+## 1) Input Validation (Home Page)
+
+* JD textarea must be required
+* If JD length < 200 characters:
+
+  * Show warning (not error):
+    "This JD is too short to analyze deeply. Paste full JD for better output."
+* Company and Role fields remain optional
+
+---
+
+## 2) Standardize Analysis Entry Schema
+
+Ensure every saved history entry has this structure (even if fields are empty):
+
+{
+id,
+createdAt,
+company: string,
+role: string,
+jdText: string,
+extractedSkills: {
+coreCS: string[],
+languages: string[],
+web: string[],
+data: string[],
+cloud: string[],
+testing: string[],
+other: string[]
+},
+roundMapping: [{ roundTitle, focusAreas, whyItMatters }],
+checklist: [{ roundTitle, items }],
+plan7Days: [{ day, focus, tasks }],
+questions: string[],
+baseScore: number,
+skillConfidenceMap: { [skill]: "know" | "practice" },
+finalScore: number,
+updatedAt: string
+}
+
+---
+
+## 3) Default Behavior (Edge Case)
+
+If no skills detected:
+
+* Populate "other" with:
+  ["Communication", "Problem solving", "Basic coding", "Projects"]
+* Adjust checklist, plan, and questions accordingly
+
+---
+
+## 4) Score Stability Rules
+
+* baseScore is calculated ONLY during analysis
+* finalScore updates ONLY when skillConfidenceMap changes
+* When user toggles skill:
+
+  * Update finalScore
+  * Update updatedAt
+  * Persist to localStorage
+
+---
+
+## 5) History Robustness
+
+* If localStorage entry is corrupted:
+
+  * Skip that entry
+  * Show message:
+    "One saved entry couldn't be loaded. Create a new analysis."
+
+---
+
+## 6) Output Requirements
+
+* Ensure schema consistency across all saved entries
+* Confirm validation works on UI
+* Provide steps to test edge cases:
+
+  * Short JD
+  * Empty skills
+  * Skill toggle score update
+  * Corrupted history simulation
+
+---
+
+IMPORTANT:
+Integrate inside existing logic (Step3 + history system).
+Do NOT create new pages.

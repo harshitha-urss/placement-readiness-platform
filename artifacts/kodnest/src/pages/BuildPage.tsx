@@ -1119,12 +1119,23 @@ function DashCard({
 
 /* ── Skill categories & keywords ── */
 const SKILL_MAP: Record<string, string[]> = {
-  "Core CS":    ["DSA", "OOP", "DBMS", "OS", "Networks"],
-  "Languages":  ["Java", "Python", "JavaScript", "TypeScript", "C++", "C#", "Go"],
-  "Web":        ["React", "Next.js", "Node.js", "Express", "REST", "GraphQL"],
-  "Data":       ["SQL", "MongoDB", "PostgreSQL", "MySQL", "Redis"],
-  "Cloud/DevOps": ["AWS", "Azure", "GCP", "Docker", "Kubernetes", "CI/CD", "Linux"],
-  "Testing":    ["Selenium", "Cypress", "Playwright", "JUnit", "PyTest"],
+  "coreCS":    ["DSA", "OOP", "DBMS", "OS", "Networks"],
+  "languages": ["Java", "Python", "JavaScript", "TypeScript", "C++", "C#", "Go"],
+  "web":       ["React", "Next.js", "Node.js", "Express", "REST", "GraphQL"],
+  "data":      ["SQL", "MongoDB", "PostgreSQL", "MySQL", "Redis"],
+  "cloud":     ["AWS", "Azure", "GCP", "Docker", "Kubernetes", "CI/CD", "Linux"],
+  "testing":   ["Selenium", "Cypress", "Playwright", "JUnit", "PyTest"],
+};
+
+/* Display labels for standardized keys */
+const SKILL_CAT_LABELS: Record<string, string> = {
+  coreCS:    "Core CS",
+  languages: "Languages",
+  web:       "Web",
+  data:      "Data",
+  cloud:     "Cloud / DevOps",
+  testing:   "Testing",
+  other:     "Other",
 };
 
 /* ── Extract skills from JD text ── */
@@ -1136,7 +1147,7 @@ function extractSkills(jd: string): Record<string, string[]> {
     if (hits.length > 0) found[cat] = hits;
   }
   if (Object.keys(found).length === 0) {
-    found["Other"] = ["Communication", "Problem solving", "Basic coding", "Projects"];
+    found["other"] = ["Communication", "Problem solving", "Basic coding", "Projects"];
   }
   return found;
 }
@@ -1158,11 +1169,11 @@ function calcScore(
 
 /* ── Checklist generator ── */
 function genChecklist(skills: Record<string, string[]>): Record<string, string[]> {
-  const hasDSA     = !!skills["Core CS"];
-  const hasWeb     = !!skills["Web"];
-  const hasDB      = !!skills["Data"];
-  const hasCloud   = !!skills["Cloud/DevOps"];
-  const hasTesting = !!skills["Testing"];
+  const hasDSA     = !!skills["coreCS"];
+  const hasWeb     = !!skills["web"];
+  const hasDB      = !!skills["data"];
+  const hasCloud   = !!skills["cloud"];
+  const hasTesting = !!skills["testing"];
 
   return {
     "Round 1 — Aptitude": [
@@ -1198,9 +1209,9 @@ function genChecklist(skills: Record<string, string[]>): Record<string, string[]
 
 /* ── 7-day plan generator ── */
 function genPlan(skills: Record<string, string[]>): { day: string; topic: string; detail: string }[] {
-  const hasWeb   = !!skills["Web"];
-  const hasDB    = !!skills["Data"];
-  const hasDSA   = !!skills["Core CS"];
+  const hasWeb   = !!skills["web"];
+  const hasDB    = !!skills["data"];
+  const hasDSA   = !!skills["coreCS"];
 
   return [
     { day: "Day 1", topic: "Core CS Foundations", detail: hasDSA ? "OS, Networks, OOP deep-dive" : "CS fundamentals review" },
@@ -1222,20 +1233,20 @@ function genQuestions(skills: Record<string, string[]>): string[] {
     "Describe a challenging project and how you solved a key problem.",
     "What are SOLID principles in OOP?",
   ];
-  if (skills["Web"]) pool.push(
+  if (skills["web"]) pool.push(
     "How does React's virtual DOM work?",
     "Explain REST vs GraphQL trade-offs.",
     "What is server-side rendering and when would you use it?",
   );
-  if (skills["Data"]) pool.push(
+  if (skills["data"]) pool.push(
     "What is database indexing and when does it hurt performance?",
     "Explain ACID properties in databases.",
   );
-  if (skills["Cloud/DevOps"]) pool.push(
+  if (skills["cloud"]) pool.push(
     "What problem does Docker solve? How does it differ from a VM?",
     "Describe a CI/CD pipeline you have set up or used.",
   );
-  if (skills["Core CS"]) pool.push(
+  if (skills["coreCS"]) pool.push(
     "Implement LRU Cache.",
     "Find the shortest path in an unweighted graph.",
   );
@@ -1366,7 +1377,9 @@ interface AnalysisResult {
   roundMapping?: RoundEntry[];
   companyIntel?: CompanyIntel;
   checklist: Record<string, string[]>;
+  checklistArr?: { roundTitle: string; items: string[] }[];
   plan: { day: string; topic: string; detail: string }[];
+  plan7Days?: { day: string; focus: string; tasks: string }[];
   questions: string[];
   readinessScore: number;
   baseScore?: number;
@@ -1402,7 +1415,9 @@ function Step3Workspace() {
       roundMapping:       rounds,
       companyIntel:       intel,
       checklist:          genChecklist(skills),
+      checklistArr:       Object.entries(genChecklist(skills)).map(([roundTitle, items]) => ({ roundTitle, items })),
       plan:               genPlan(skills),
+      plan7Days:          genPlan(skills).map((p) => ({ day: p.day, focus: p.topic, tasks: p.detail })),
       questions:          genQuestions(skills),
       readinessScore:     score,
       baseScore:          score,
@@ -1724,7 +1739,7 @@ function AnalysisOutput({ result, onReset }: { result: AnalysisResult; onReset: 
             {Object.entries(result.extractedSkills).map(([cat, skills]) => (
               <div key={cat}>
                 <p style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 8px" }}>
-                  {cat}
+                  {SKILL_CAT_LABELS[cat] ?? cat}
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {skills.map((s) => (
@@ -1919,8 +1934,29 @@ function Step4Workspace() {
     );
   }
 
+  const showCorruptionNotice = hadCorruption();
+
   return (
-    <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {showCorruptionNotice && (
+        <div
+          style={{
+            border: `1px solid ${C.warningBorder}`,
+            borderRadius: 8,
+            backgroundColor: C.warningBg,
+            padding: "12px 20px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: C.warningText, flexShrink: 0 }} />
+          <p style={{ fontSize: 13, color: C.warningText, margin: 0 }}>
+            One saved entry couldn't be loaded and was removed. Create a new analysis to continue.
+          </p>
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
       {/* ── Left: History list ── */}
       <div
         style={{
@@ -2022,6 +2058,7 @@ function Step4Workspace() {
           </div>
         )}
       </div>
+      </div>
     </div>
   );
 }
@@ -2073,11 +2110,24 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
   /* ── Top 3 weak skills ── */
   const weakSkills = allSkills.filter((s) => confMap[s] === "practice").slice(0, 3);
 
-  /* ── Toggle handler ── */
+  /* ── Toggle handler — persists finalScore + updatedAt to history ── */
   const toggle = (skill: string) => {
     setConfMap((prev) => {
       const next = { ...prev, [skill]: prev[skill] === "know" ? "practice" : "know" } as Record<string, "know" | "practice">;
       localStorage.setItem(confKey, JSON.stringify(next));
+
+      const knowCt     = Object.values(next).filter((v) => v === "know").length;
+      const practiceCt = Object.values(next).filter((v) => v === "practice").length;
+      const newFinal   = Math.max(0, Math.min(100, entry.readinessScore + knowCt * 2 - practiceCt * 2));
+      const now        = new Date().toISOString();
+
+      const allEntries = loadHistory();
+      const idx        = allEntries.findIndex((e) => e.id === entry.id);
+      if (idx !== -1) {
+        allEntries[idx] = { ...allEntries[idx], finalScore: newFinal, updatedAt: now };
+        saveHistory(allEntries);
+      }
+
       return next;
     });
   };
@@ -2293,7 +2343,7 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
             {Object.entries(entry.extractedSkills).map(([cat, skills]) => (
               <div key={cat}>
                 <p style={{ fontSize: 11, color: C.muted, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 10px" }}>
-                  {cat}
+                  {SKILL_CAT_LABELS[cat] ?? cat}
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {skills.map((s) => {
