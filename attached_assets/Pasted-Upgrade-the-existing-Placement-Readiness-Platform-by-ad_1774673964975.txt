@@ -1,0 +1,104 @@
+Upgrade the existing Placement Readiness Platform by adding a **Company Intelligence + Round Mapping layer**.
+
+⚠️ STRICT RULES:
+
+* Do NOT change existing routes
+* Do NOT remove existing features
+* Keep current UI design consistent
+* No external APIs or scraping
+
+---
+
+## 1) Company Intelligence Block
+
+When a user provides a company name (from Step 3 analysis):
+
+Create a structured info card with:
+
+* Company Name
+* Industry (default: "Technology Services")
+* Estimated Size:
+
+  * Startup (<200)
+  * Mid-size (200–2000)
+  * Enterprise (2000+)
+
+### Heuristics:
+
+* If company matches known list (Amazon, Infosys, TCS, Wipro, Google, Microsoft) → Enterprise
+* If unknown → Startup
+
+### Add:
+
+"Typical Hiring Focus"
+
+* Enterprise → "Structured DSA + core fundamentals"
+* Startup → "Practical problem solving + stack depth"
+
+---
+
+## 2) Round Mapping Engine
+
+Based on:
+
+* Extracted skills (from Step 3)
+* Company size (from Company Intel)
+
+Generate dynamic rounds:
+
+### Enterprise Example:
+
+Round 1: Online Test (DSA + Aptitude)
+Round 2: Technical (DSA + Core CS)
+Round 3: Tech + Projects
+Round 4: HR
+
+### Startup Example:
+
+Round 1: Practical Coding
+Round 2: System Discussion
+Round 3: Culture Fit
+
+---
+
+## 3) UI Requirements
+
+* Display Company Intelligence as a **card above analysis output**
+* Display Round Flow as a **vertical timeline**
+* Each round must include:
+
+  * Round Title
+  * Focus Areas
+  * "Why this round matters" (1-line explanation)
+
+---
+
+## 4) Persistence
+
+* Save company intel + round mapping inside existing history (localStorage)
+* It should reload correctly in Step 4 (history page)
+
+---
+
+## 5) Small Note
+
+Add:
+"Demo Mode: Company intel generated heuristically"
+
+---
+
+## 6) Output Requirements
+
+* Ensure Company Intel renders correctly
+* Ensure round mapping changes dynamically based on company + skills
+* Provide 2–3 test scenarios:
+
+  * Example: Google + DSA → Enterprise flow
+  * Example: Unknown startup + React → Startup flow
+
+---
+
+IMPORTANT:
+Use existing Step3Workspace and AnalysisOutput structure.
+Do NOT break current UI.
+Extend it cleanly.

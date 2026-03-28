@@ -220,6 +220,10 @@ export function BuildPage() {
             <Step3Workspace />
           ) : currentStep === 4 ? (
             <Step4Workspace />
+          ) : currentStep === 6 ? (
+            <Step6Workspace />
+          ) : currentStep === 7 ? (
+            <Step7Workspace />
           ) : (
             <WorkspaceCards stepNumber={currentStep} />
           )}
@@ -1131,6 +1135,9 @@ function extractSkills(jd: string): Record<string, string[]> {
     const hits = keywords.filter((kw) => lower.includes(kw.toLowerCase()));
     if (hits.length > 0) found[cat] = hits;
   }
+  if (Object.keys(found).length === 0) {
+    found["Other"] = ["Communication", "Problem solving", "Basic coding", "Projects"];
+  }
   return found;
 }
 
@@ -1238,34 +1245,133 @@ function genQuestions(skills: Record<string, string[]>): string[] {
   return pool.slice(0, 10);
 }
 
+/* ── Company intel heuristics ── */
+const ENTERPRISE_NAMES = [
+  "amazon", "google", "microsoft", "meta", "apple", "netflix",
+  "infosys", "tcs", "wipro", "accenture", "ibm", "cognizant",
+  "hcl", "capgemini", "deloitte", "kpmg", "oracle", "sap",
+  "flipkart", "swiggy", "zomato", "paytm", "byju", "razorpay",
+];
+
+function inferCompanyIntel(company: string): CompanyIntel {
+  const name = company.toLowerCase().trim();
+  const isEnterprise = ENTERPRISE_NAMES.some((n) => name.includes(n));
+  return {
+    type:        isEnterprise ? "enterprise" : "startup",
+    size:        isEnterprise ? "Enterprise (2000+)" : "Startup (<200)",
+    industry:    "Technology Services",
+    hiringFocus: isEnterprise
+      ? "Structured DSA + core fundamentals"
+      : "Practical problem solving + stack depth",
+  };
+}
+
+function genRoundMapping(intel: CompanyIntel): RoundEntry[] {
+  if (intel.type === "enterprise") {
+    return [
+      {
+        roundTitle:   "Round 1: Online Test",
+        focusAreas:   "DSA + Aptitude",
+        whyItMatters: "Filters candidates at scale on fundamentals",
+      },
+      {
+        roundTitle:   "Round 2: Technical Interview",
+        focusAreas:   "DSA + Core CS (OS, DBMS, Networks)",
+        whyItMatters: "Evaluates depth of CS understanding",
+      },
+      {
+        roundTitle:   "Round 3: Tech + Projects",
+        focusAreas:   "System design + real-world project walkthrough",
+        whyItMatters: "Validates practical and architectural skills",
+      },
+      {
+        roundTitle:   "Round 4: HR",
+        focusAreas:   "Communication, culture, career goals",
+        whyItMatters: "Checks communication and culture fit",
+      },
+    ];
+  }
+  return [
+    {
+      roundTitle:   "Round 1: Practical Coding",
+      focusAreas:   "Hands-on problem solving in your stack",
+      whyItMatters: "Tests applied coding ability directly",
+    },
+    {
+      roundTitle:   "Round 2: System Discussion",
+      focusAreas:   "Architecture decisions + stack depth",
+      whyItMatters: "Evaluates engineering thinking at small scale",
+    },
+    {
+      roundTitle:   "Round 3: Culture Fit",
+      focusAreas:   "Values, ownership mindset, communication",
+      whyItMatters: "Ensures long-term team compatibility",
+    },
+  ];
+}
+
 /* ── Shared localStorage key (history array) ── */
 const LS_KEY = "kodnest_history";
 
 /* ── Storage helpers ── */
+let _hadCorruption = false;
 function loadHistory(): AnalysisResult[] {
+  _hadCorruption = false;
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const valid: AnalysisResult[] = [];
+    for (const entry of parsed) {
+      try {
+        if (entry && typeof entry.id === "string" && typeof entry.createdAt === "string") {
+          valid.push(entry as AnalysisResult);
+        } else { _hadCorruption = true; }
+      } catch { _hadCorruption = true; }
+    }
+    if (_hadCorruption) localStorage.setItem(LS_KEY, JSON.stringify(valid));
+    return valid;
   } catch {
     return [];
   }
 }
+function hadCorruption() { return _hadCorruption; }
 function saveHistory(entries: AnalysisResult[]): void {
   localStorage.setItem(LS_KEY, JSON.stringify(entries));
 }
 
 /* ── Types ── */
+interface RoundEntry {
+  roundTitle: string;
+  focusAreas: string;
+  whyItMatters: string;
+}
+
+interface CompanyIntel {
+  type: "enterprise" | "startup";
+  size: string;
+  industry: string;
+  hiringFocus: string;
+}
+
 interface AnalysisResult {
   id: string;
   createdAt: string;
+  updatedAt?: string;
   company: string;
   role: string;
   jdText: string;
   extractedSkills: Record<string, string[]>;
+  roundMapping?: RoundEntry[];
+  companyIntel?: CompanyIntel;
   checklist: Record<string, string[]>;
   plan: { day: string; topic: string; detail: string }[];
   questions: string[];
   readinessScore: number;
+  baseScore?: number;
+  finalScore?: number;
+  skillConfidenceMap?: Record<string, "know" | "practice">;
 }
 
 /* ── Main Step3 component ── */
@@ -1279,18 +1385,29 @@ function Step3Workspace() {
   });
 
   const handleAnalyze = () => {
-    const skills = extractSkills(jd);
-    const score  = calcScore(skills, company, role, jd);
+    const skills    = extractSkills(jd);
+    const score     = calcScore(skills, company, role, jd);
+    const intel     = company.trim() ? inferCompanyIntel(company) : undefined;
+    const rounds    = intel ? genRoundMapping(intel) : genRoundMapping({ type: "startup", size: "Startup (<200)", industry: "Technology Services", hiringFocus: "Practical problem solving + stack depth" });
+    const now       = new Date().toISOString();
+    const confMap: Record<string, "know" | "practice"> = {};
+    Object.values(skills).flat().forEach((s) => { confMap[s] = "practice"; });
     const data: AnalysisResult = {
-      id:              crypto.randomUUID(),
-      createdAt:       new Date().toISOString(),
+      id:                 crypto.randomUUID(),
+      createdAt:          now,
+      updatedAt:          now,
       company, role,
-      jdText:          jd,
-      extractedSkills: skills,
-      checklist:       genChecklist(skills),
-      plan:            genPlan(skills),
-      questions:       genQuestions(skills),
-      readinessScore:  score,
+      jdText:             jd,
+      extractedSkills:    skills,
+      roundMapping:       rounds,
+      companyIntel:       intel,
+      checklist:          genChecklist(skills),
+      plan:               genPlan(skills),
+      questions:          genQuestions(skills),
+      readinessScore:     score,
+      baseScore:          score,
+      finalScore:         score,
+      skillConfidenceMap: confMap,
     };
     const hist = loadHistory();
     saveHistory([...hist, data]);
@@ -1388,6 +1505,21 @@ function AnalysisInput({
           onFocus={(e) => (e.target.style.borderColor = C.accent)}
           onBlur={(e)  => (e.target.style.borderColor = C.border)}
         />
+        {jd.trim().length >= 20 && jd.trim().length < 200 && (
+          <div
+            style={{
+              marginTop: 10,
+              padding: "10px 14px",
+              backgroundColor: C.warningBg,
+              border: `1px solid ${C.warningBorder}`,
+              borderRadius: 6,
+            }}
+          >
+            <p style={{ fontSize: 13, color: C.warningText, margin: 0 }}>
+              This JD is too short to analyze deeply. Paste the full JD for better results.
+            </p>
+          </div>
+        )}
         <div
           style={{
             display: "flex", justifyContent: "space-between",
@@ -1418,6 +1550,69 @@ function AnalysisInput({
             Analyze JD
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Shared: Company Intel card ── */
+function CompanyIntelCard({ intel }: { intel: CompanyIntel }) {
+  const isEnterprise = intel.type === "enterprise";
+  return (
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+        <div>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.muted, margin: "0 0 6px" }}>
+            Company Intelligence
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 20, border: `1px solid ${C.border}`, backgroundColor: C.mutedBg, color: C.text, fontWeight: 500 }}>
+              {intel.industry}
+            </span>
+            <span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 20, border: `1px solid ${isEnterprise ? C.accent + "44" : C.successBorder}`, backgroundColor: isEnterprise ? `${C.accent}0d` : C.successBg, color: isEnterprise ? C.accent : C.successText, fontWeight: 600 }}>
+              {intel.size}
+            </span>
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <p style={{ fontSize: 11, color: C.muted, margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Typical Hiring Focus</p>
+          <p style={{ fontSize: 13, fontWeight: 600, color: C.text, margin: 0 }}>{intel.hiringFocus}</p>
+        </div>
+      </div>
+      <p style={{ fontSize: 11, color: C.muted, margin: 0, fontStyle: "italic" }}>
+        Demo Mode: Company intel generated heuristically.
+      </p>
+    </div>
+  );
+}
+
+/* ── Shared: Round Mapping timeline ── */
+function RoundMappingCard({ rounds }: { rounds: RoundEntry[] }) {
+  return (
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
+      <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.muted, margin: "0 0 16px" }}>
+        Interview Round Flow
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {rounds.map((r, i) => (
+          <div key={r.roundTitle} style={{ display: "flex", gap: 16, paddingBottom: i < rounds.length - 1 ? 20 : 0, position: "relative" }}>
+            {/* Timeline dot + line */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: C.accent, color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {i + 1}
+              </div>
+              {i < rounds.length - 1 && (
+                <div style={{ width: 1, flex: 1, backgroundColor: C.border, marginTop: 6 }} />
+              )}
+            </div>
+            {/* Round content */}
+            <div style={{ paddingBottom: i < rounds.length - 1 ? 4 : 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: C.text, margin: "4px 0 4px" }}>{r.roundTitle}</p>
+              <p style={{ fontSize: 12, color: C.accent, fontWeight: 600, margin: "0 0 4px" }}>{r.focusAreas}</p>
+              <p style={{ fontSize: 12, color: C.muted, margin: 0, fontStyle: "italic" }}>"{r.whyItMatters}"</p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1477,6 +1672,14 @@ function AnalysisOutput({ result, onReset }: { result: AnalysisResult; onReset: 
           </button>
         </div>
       </div>
+
+      {/* Company Intel — if available */}
+      {result.companyIntel && <CompanyIntelCard intel={result.companyIntel} />}
+
+      {/* Round Mapping — if available */}
+      {result.roundMapping && result.roundMapping.length > 0 && (
+        <RoundMappingCard rounds={result.roundMapping} />
+      )}
 
       {/* Readiness bar */}
       <div
@@ -1988,6 +2191,14 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
         </div>
       </div>
 
+      {/* ── Company Intel ── */}
+      {entry.companyIntel && <CompanyIntelCard intel={entry.companyIntel} />}
+
+      {/* ── Round Mapping ── */}
+      {entry.roundMapping && entry.roundMapping.length > 0 && (
+        <RoundMappingCard rounds={entry.roundMapping} />
+      )}
+
       {/* ── Live readiness bar ── */}
       <div
         style={{
@@ -2236,6 +2447,316 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   STEP 6 WORKSPACE — Test Checklist
+══════════════════════════════════════════════════════ */
+
+const CHECKLIST_LS = "kodnest_checklist";
+
+const CHECKLIST_ITEMS = [
+  { id: "jd_validation",     label: "JD validation works",                    hint: "Enter < 20 chars in JD → Analyze button stays disabled" },
+  { id: "short_jd_warning",  label: "Short JD warning shows",                 hint: "Enter 20–199 chars → amber warning appears below textarea" },
+  { id: "skills_grouped",    label: "Skills extraction grouped correctly",     hint: "Paste a React + SQL JD → Web and Data categories appear" },
+  { id: "round_mapping",     label: "Round mapping adapts to company",         hint: "Enter 'Amazon' vs unknown name → Enterprise vs Startup rounds differ" },
+  { id: "company_intel",     label: "Company intel card renders",              hint: "Enter a company name in Step 3 → Company Intelligence card appears in results" },
+  { id: "score_deterministic", label: "Score calculation is deterministic",   hint: "Run the same JD twice → both scores are identical" },
+  { id: "skill_toggles",     label: "Skill toggles update score live",         hint: "Step 4 → open a result → click a skill tag → score updates instantly" },
+  { id: "changes_persist",   label: "Changes persist after refresh",           hint: "Toggle skills → refresh page → toggles and score are retained" },
+  { id: "history_saves",     label: "History saves and loads correctly",       hint: "Analyze JD → go to Step 4 → entry appears in history list" },
+  { id: "export_works",      label: "Export buttons work",                     hint: "Click 'Copy 7-Day Plan' → paste in text editor → content appears" },
+];
+
+function Step6Workspace() {
+  const [checked, setChecked] = useState<Record<string, boolean>>(() => {
+    try {
+      const s = localStorage.getItem(CHECKLIST_LS);
+      return s ? JSON.parse(s) : {};
+    } catch { return {}; }
+  });
+
+  const passCount = CHECKLIST_ITEMS.filter((i) => checked[i.id]).length;
+  const total     = CHECKLIST_ITEMS.length;
+  const allPassed = passCount === total;
+
+  const toggle = (id: string) => {
+    setChecked((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      localStorage.setItem(CHECKLIST_LS, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const reset = () => {
+    setChecked({});
+    localStorage.removeItem(CHECKLIST_LS);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* Summary header */}
+      <div
+        style={{
+          border: `1px solid ${allPassed ? C.successBorder : C.border}`,
+          borderRadius: 8,
+          backgroundColor: allPassed ? C.successBg : C.card,
+          padding: 24,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <p
+            style={{
+              fontFamily: "Georgia, serif",
+              fontSize: 18,
+              fontWeight: 700,
+              color: allPassed ? C.successText : C.text,
+              margin: "0 0 4px",
+            }}
+          >
+            {allPassed ? "All tests passed — ready to ship!" : "Test Checklist"}
+          </p>
+          <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
+            {allPassed
+              ? "Proceed to Step 7 to deploy."
+              : passCount < total
+              ? `Fix remaining issues before shipping.`
+              : "All clear."}
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              fontFamily: "Georgia, serif",
+              color: allPassed ? C.successText : C.accent,
+            }}
+          >
+            {passCount} <span style={{ fontSize: 14, color: C.muted }}>/ {total}</span>
+          </div>
+          <button
+            onClick={reset}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "6px 14px",
+              borderRadius: 6,
+              border: `1px solid ${C.border}`,
+              backgroundColor: "transparent",
+              color: C.muted,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              transition: "all 150ms ease-in-out",
+            }}
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ height: 6, backgroundColor: C.mutedBg, borderRadius: 3, overflow: "hidden" }}>
+        <div
+          style={{
+            width: `${(passCount / total) * 100}%`,
+            height: "100%",
+            backgroundColor: allPassed ? C.successText : C.accent,
+            borderRadius: 3,
+            transition: "width 200ms ease-in-out",
+          }}
+        />
+      </div>
+
+      {/* Checklist items */}
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, overflow: "hidden" }}>
+        {CHECKLIST_ITEMS.map((item, i) => {
+          const isDone = !!checked[item.id];
+          return (
+            <div
+              key={item.id}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 16,
+                padding: "16px 24px",
+                borderBottom: i < CHECKLIST_ITEMS.length - 1 ? `1px solid ${C.border}` : "none",
+                backgroundColor: isDone ? C.successBg : "transparent",
+                transition: "background-color 150ms ease-in-out",
+              }}
+            >
+              <button
+                onClick={() => toggle(item.id)}
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 4,
+                  border: `2px solid ${isDone ? C.successText : C.border}`,
+                  backgroundColor: isDone ? C.successText : "transparent",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  marginTop: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 150ms ease-in-out",
+                  padding: 0,
+                }}
+              >
+                {isDone && (
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4L3.5 6.5L9 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: isDone ? C.successText : C.text,
+                    margin: "0 0 4px",
+                    textDecoration: isDone ? "line-through" : "none",
+                    transition: "all 150ms ease-in-out",
+                  }}
+                >
+                  {item.label}
+                </p>
+                <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+                  How to test: {item.hint}
+                </p>
+              </div>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "3px 8px",
+                  borderRadius: 12,
+                  flexShrink: 0,
+                  border: `1px solid ${isDone ? C.successBorder : C.border}`,
+                  backgroundColor: isDone ? C.successBg : C.mutedBg,
+                  color: isDone ? C.successText : C.muted,
+                  transition: "all 150ms ease-in-out",
+                }}
+              >
+                {isDone ? "Pass" : "Pending"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   STEP 7 WORKSPACE — Ship Lock
+══════════════════════════════════════════════════════ */
+
+function Step7Workspace() {
+  const [checked] = useState<Record<string, boolean>>(() => {
+    try {
+      const s = localStorage.getItem(CHECKLIST_LS);
+      return s ? JSON.parse(s) : {};
+    } catch { return {}; }
+  });
+
+  const passCount = CHECKLIST_ITEMS.filter((i) => checked[i.id]).length;
+  const total     = CHECKLIST_ITEMS.length;
+  const allPassed = passCount === total;
+  const remaining = CHECKLIST_ITEMS.filter((i) => !checked[i.id]);
+
+  if (!allPassed) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div
+          style={{
+            border: `1px solid ${C.warningBorder}`,
+            borderRadius: 8,
+            backgroundColor: C.warningBg,
+            padding: 40,
+            textAlign: "center",
+          }}
+        >
+          <p style={{ fontSize: 20, fontWeight: 700, fontFamily: "Georgia, serif", color: C.warningText, margin: "0 0 8px" }}>
+            Ship Locked
+          </p>
+          <p style={{ fontSize: 14, color: C.warningText, margin: "0 0 4px" }}>
+            Complete all {total} tests in Step 6 before shipping.
+          </p>
+          <p style={{ fontSize: 13, color: C.muted, margin: 0 }}>
+            {passCount} / {total} tests passed · {remaining.length} remaining
+          </p>
+        </div>
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.muted, margin: "0 0 14px" }}>
+            Remaining Tests ({remaining.length})
+          </p>
+          {remaining.map((item) => (
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: C.accent, flexShrink: 0 }} />
+              <p style={{ fontSize: 13, color: C.text, margin: 0 }}>{item.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div
+        style={{
+          border: `1px solid ${C.successBorder}`,
+          borderRadius: 8,
+          backgroundColor: C.successBg,
+          padding: 40,
+          textAlign: "center",
+        }}
+      >
+        <p style={{ fontSize: 24, fontWeight: 700, fontFamily: "Georgia, serif", color: C.successText, margin: "0 0 8px" }}>
+          All {total} tests passed
+        </p>
+        <p style={{ fontSize: 15, color: C.successText, margin: "0 0 24px" }}>
+          Your build is verified and ready to ship.
+        </p>
+        <button
+          onClick={() => alert("Deploy your app via Replit's Publish button.")}
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            padding: "12px 32px",
+            borderRadius: 6,
+            border: "none",
+            backgroundColor: C.accent,
+            color: "#fff",
+            cursor: "pointer",
+            fontFamily: "inherit",
+            letterSpacing: "0.02em",
+          }}
+        >
+          Deploy Now
+        </button>
+      </div>
+      <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, backgroundColor: C.card, padding: 24 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.muted, margin: "0 0 14px" }}>
+          Ship Checklist ({total} / {total})
+        </p>
+        {CHECKLIST_ITEMS.map((item) => (
+          <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
+            <svg width="14" height="12" viewBox="0 0 14 12" fill="none">
+              <path d="M1.5 6L5 9.5L12.5 2" stroke={C.successText} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <p style={{ fontSize: 13, color: C.text, margin: 0 }}>{item.label}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
