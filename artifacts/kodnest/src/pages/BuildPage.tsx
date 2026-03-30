@@ -2508,16 +2508,16 @@ function HistoryDetail({ entry }: { entry: AnalysisResult }) {
 const CHECKLIST_LS = "kodnest_checklist";
 
 const CHECKLIST_ITEMS = [
-  { id: "jd_validation",     label: "JD validation works",                    hint: "Enter < 20 chars in JD → Analyze button stays disabled" },
-  { id: "short_jd_warning",  label: "Short JD warning shows",                 hint: "Enter 20–199 chars → amber warning appears below textarea" },
-  { id: "skills_grouped",    label: "Skills extraction grouped correctly",     hint: "Paste a React + SQL JD → Web and Data categories appear" },
-  { id: "round_mapping",     label: "Round mapping adapts to company",         hint: "Enter 'Amazon' vs unknown name → Enterprise vs Startup rounds differ" },
-  { id: "company_intel",     label: "Company intel card renders",              hint: "Enter a company name in Step 3 → Company Intelligence card appears in results" },
-  { id: "score_deterministic", label: "Score calculation is deterministic",   hint: "Run the same JD twice → both scores are identical" },
-  { id: "skill_toggles",     label: "Skill toggles update score live",         hint: "Step 4 → open a result → click a skill tag → score updates instantly" },
-  { id: "changes_persist",   label: "Changes persist after refresh",           hint: "Toggle skills → refresh page → toggles and score are retained" },
-  { id: "history_saves",     label: "History saves and loads correctly",       hint: "Analyze JD → go to Step 4 → entry appears in history list" },
-  { id: "export_works",      label: "Export buttons work",                     hint: "Click 'Copy 7-Day Plan' → paste in text editor → content appears" },
+  { id: "jd_validation",       label: "JD required validation works",                   hint: "Go to Step 3, leave JD blank or enter < 20 chars → Analyze button stays disabled" },
+  { id: "short_jd_warning",    label: "Short JD warning shows for <200 chars",          hint: "Enter 20–199 chars in the JD field → amber warning appears below the textarea" },
+  { id: "skills_grouped",      label: "Skills extraction groups correctly",              hint: "Paste a React + SQL JD → results show Web and Data categories separately" },
+  { id: "round_mapping",       label: "Round mapping changes based on company + skills", hint: "Enter 'Amazon' with DSA JD → 4 Enterprise rounds; enter unknown company → 3 Startup rounds" },
+  { id: "score_deterministic", label: "Score calculation is deterministic",              hint: "Run the exact same JD twice → both readiness scores are identical" },
+  { id: "skill_toggles",       label: "Skill toggles update score live",                 hint: "Step 4 → open a result → click any skill tag → score updates immediately" },
+  { id: "changes_persist",     label: "Changes persist after refresh",                   hint: "Toggle skills → close and reopen the tab → same toggles and score are still shown" },
+  { id: "history_saves",       label: "History saves and loads correctly",               hint: "Analyze a JD → navigate to Step 4 → the new entry appears in the history list" },
+  { id: "export_works",        label: "Export buttons copy correct content",             hint: "Click 'Copy 7-Day Plan' → paste in any text editor → full plan content appears" },
+  { id: "no_console_errors",   label: "No console errors on core pages",                 hint: "Open browser DevTools → Console tab → navigate Steps 1–4 → no red errors visible" },
 ];
 
 function Step6Workspace() {
