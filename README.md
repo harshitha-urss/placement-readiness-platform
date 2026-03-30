@@ -60,21 +60,21 @@ https://placement-readiness-web-platform.netlify.app/
 
 ## High-Level System Architecture
 
-User inputs Job Description (JD)  
-↓  
-Skill Extraction Engine  
-↓  
-Categorization (Core, Web, Data, etc.)  
-↓  
-Company Intelligence Heuristics  
-↓  
-Round Mapping Engine  
-↓  
-Preparation Plan Generator  
-↓  
-Checklist + Readiness Score  
-↓  
-Results displayed to user  
+    User inputs Job Description (JD)  
+                ↓  
+    Skill Extraction Engine  
+                ↓  
+    Categorization (Core, Web, Data, etc.)  
+                ↓  
+    Company Intelligence Heuristics  
+                ↓  
+    Round Mapping Engine  
+                ↓  
+    Preparation Plan Generator  
+                ↓  
+    Checklist + Readiness Score  
+                ↓  
+    Results displayed to user  
 
 ---
 
